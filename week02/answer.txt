@@ -1,0 +1,12 @@
+4.2)
+`BIKE_MODEL`: nằm ở phân vùng .rodata
+`total_odometer`: nằm ở phân vùng .bss
+`current_speed`: nằm ở phân vùng Stack
+
+4.3)
+Khi kích hoạt hàm `crash_simulation`, hệ thống sẽ gọi ra một mảng 100 số nguyên vì là hàm đệ quy nên sẽ liên tục bị gọi lại, dẫn đến Stack Overflow.
+CPU sẽ nhảy vào hàm ISR để xử lý sự cố tràn ngăn xếp
+
+5)
+Lựa chọn cách 1 vì mảng toàn cục `uint16_t trip_history[20000];` chiếm 40kB nên khi khai báo theo cách 1 dữ liệu sẽ được phân vùng .bss, lúc này mảng được hiểu là chỉ ghi nhớ cái địa chỉ của nó, không nhất thiết quan tâm đến giá trị nó 
+mang vì vậy mà dung lượng chiếm trong Flash sẽ bằng 0kB và RAM là 40kB nhỏ hơn dung lượng trống nên sẽ chạy được, còn cách 2 thì ngược lại, mảng sẽ được phân vùng .data và chiếm trong Flash là 40kB nên sẽ không biên dịch và nạp được. 
