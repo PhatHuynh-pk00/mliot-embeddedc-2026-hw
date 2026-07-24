@@ -1,0 +1,33 @@
+1.1
+CMake: Đọc file cấu hình do mình viết để tạo ra build scripts
+Ninja: Đọc các build scripts do CMake vừa tạo, phân tích xem file nào bị sửa đổi từ đó biết cái nào cần build lại
+Compiler (arm-none-eabi-gcc): biên dịch các file .c (file ngôn ngữ C trên máy tính) thành file .o mã máy cho nhân ARM Cortex-M của vi điều khiển
+STM32_Programmer_CLI: Giao tiếp với mạch nạp (ST-link) để nạp chương trình đã được biên dịch
+
+1.2
+CMake sinh ra build scripts định dạng (build.ninja) => Ninja sẽ phân tích file build scripts trước để phân công thứ tự biên dịch các file .c => arm-none-eabi-gcc sẽ compile dịch file .c thành .o và link các file .o thành file Linker
+scripts .ld tạo ra file mã máy .elf .bin .hex => STM32_Programmer_CLI đọc 3 file mã máy trên và nạp xuống chip 
+
+2.1
+Khi dịch file .c thành .o thì không biết các hàm ở file khác được sử dụng trong file này ở vị trí bộ nhớ nào, vì vậy chưa thể nạp trực tiếp xuống vi điều khiển được, vì vậy cần Linker để gom các file .o lại để phân giải các hàm, tham
+chiếu được sử dụng giữa các file, và tạo 1 file Linker scripts (.ld) để định vị bộ nhớ các đoạn code, hàm, biến,.. vào đúng vị trí vật lý của FLASH và RAM trên vi điều khiển
+
+2.2 
+Vai trò của tính năng Build tăng dần tiết kiệm thời gian khi ta sửa 1 vài chi tiết trong code và cần build lại, lúc này tính năng sẽ biết file nào được sửa và chỉ build lại đúng file đó giúp tiết kiệm thời gian nhiều hơn là phải build
+lại toàn bộ dự án. 
+Cơ chế là So sánh Timestamp: Ninja liên tục xem xét thời gian sửa đổi file .c .h và .o để xem nếu thời gian sửa đổi .c mới hơn .o thì sẽ biên dịch lại mỗi file .c đó thôi và cơ chế Dependency Graph là GCC có thể tạo ra các file .d để
+liệt kê file .c nào #include file .h nào từ đó Ninja sẽ lưu chúng, vì vậy khi 1 file .h bị sửa thì file .c #include nó cũng sẽ được biên dịch lại.
+
+3.1 
+LMA: Nơi lưu dữ liệu vật lý (cố định), AT> FLASH chỉ LMD của .data nằm trong bộ nhớ FLASH. Biến _sidata = LOADADDR(.data) lưu địa chỉ bắt đầu của vùng nhớ LMA trên Flash.
+VMA: Biến thật sự nằm tại vùng này khi CPU chạy chương trình. >RAM chỉ VMA được thiết lập trong bộ nhớ RAM. Biến _sdata và _edata lưu địa chỉ bắt đầu và kết thúc của VMA trên RAM
+Cần 2 loại địa chỉ vì: LMA giúp lưu trữ các giá trị mãi mãi trong bộ nhớ FLASH phòng trường hợp mất điện, reset mạch. Còn để thay đổi các biến trong quá trình chạy liên tục với tốc độ cao thì phải đưa lên RAM nên VMA sẽ được sử dụng 
+cho thao tác này.
+
+3.2
+Khi vi điều khiển khởi động, phần cứng Flash đã chứa các giá trị khởi tạo nhưng trên RAM chỉ chứa các giá trị ngẫu nhiên, vì vậy nếu hàm Reset_Handler quên chép các biến từ Flash sang RAM thì khi chạy CPU sẽ chỉ làm việc đến địa chỉ
+trên RAM mà RAM luc này toàn giá trị ngẫu nhiên từ đó CPU sẽ đọc và thực thi sai hoặc bị Crash.
+
+4.1
+cmake -G "Ninja" -B build
+ninja -C build
